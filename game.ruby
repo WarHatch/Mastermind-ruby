@@ -1,4 +1,21 @@
-# The run file for this project
+# Component for Board class
+class BreakAttempt
+  attr_accessor :break_attempt
+  attr_reader :feedback, :feedback_count
+
+  def initialize(peg_spaces)
+    @break_attempt = Array.new(peg_spaces)
+    @feedback = Array.new(peg_spaces)
+    @feedback_count = 0;
+  end
+
+  def add_feedback_peg(feedback_type)
+    @feedback[@feedback_count] = feedback_type
+    @feedback_count += 1
+  end
+end
+
+# Mastermind game board components and game sequence
 class Board
   PEG_SPACES = 4
   TURNS = 12
@@ -7,10 +24,8 @@ class Board
   CORRECT_POSITION = 'P'.freeze
   CORRECT_COLOR = 'C'.freeze
 
-
   def initialize(computer_generated)
-    @guesses = Array.new(TURNS)
-    @feedback = Array.new(TURNS.times { Array.new(PEG_SPACES) })
+    @guesses = Array.new(TURNS) { BreakAttempt.new(PEG_SPACES) }
     @answer = Array.new(PEG_SPACES)
     @turns_passed = 0
 
@@ -38,8 +53,8 @@ class Board
 
   def guess(guess_string)
     guess = guess_string.split(' ')
-    @guesses[@turns_passed] = guess
-    puts guess.to_s
+    @guesses[@turns_passed].break_attempt = guess
+    puts @guesses[@turns_passed].break_attempt.to_s
     puts @answer.to_s
     if guess.eql? @answer
       puts 'YOU WIN!'
@@ -51,53 +66,40 @@ class Board
     @turns_passed += 1
   end
 
-  #TODO: test without field assignment
   def check_guess(guess)
-    @feedback[@turns_passed] = feedback_position(guess)
+    feedback_position(guess)
 
-    puts "The board after 'pulling out' the correct pegs: #{guess.to_s}"
-    puts "Feedback: #{@feedback[@turns_passed]}"
+    puts "Feedback:\n#{@guesses[@turns_passed].feedback}"
+    puts "The board after 'pulling out' the correct pegs:\n#{guess.to_s}"
 
-    @feedback[@turns_passed] = feedback_colors(guess)
-    puts "Feedback: #{@feedback[@turns_passed]}"
+    feedback_colors(guess)
 
+    puts "Final feedback:\n#{@guesses[@turns_passed].feedback}"
   end
 
+  # Adds CORRECT_POSITION pegs and returns guess without the correctly answered pegs
   def feedback_position(guess)
-    feedback = Array.new(PEG_SPACES)
-    # finds correct positions
+    # feedback = @guesses[@turns_passed].feedback
     guess.each.with_index do |peg, slot|
       if peg.eql? @answer[slot]
-        feedback[slot] = CORRECT_POSITION
-      end
-    end
-    # "pulls out" correct pegs
-    feedback.each.with_index do |feedback_peg, slot|
-      if feedback_peg.eql? CORRECT_POSITION
+        @guesses[@turns_passed].add_feedback_peg CORRECT_POSITION
         guess[slot] = EMPTY
       end
     end
-    feedback
+    guess
   end
 
   def feedback_colors(guess)
-    feedback = @feedback[@turns_passed]
-
-    occupied_slots = feedback.count { |slot| !slot.nil? }
-    puts "Occupied slots: #{occupied_slots}"
-
-    # removes already guessed peg slots and saves remaining guess for further checking
-    remaining_answer = @answer.select.with_index { |_, index| feedback[index] != CORRECT_POSITION }
+    remaining_answer = @answer
     puts "remaining_answer: #{remaining_answer}"
     puts "remaining_guess: #{guess}"
 
     remaining_answer.each do |answer_peg|
       if index = guess.index(answer_peg)
         guess[index] = EMPTY
-        feedback[occupied_slots] = CORRECT_COLOR
+        @guesses[@turns_passed].add_feedback_peg CORRECT_COLOR
       end
     end
-    feedback
   end
 
 end
@@ -105,4 +107,8 @@ end
 puts '* * * M a s t e r m i n d * * *'
 game = Board.new(true)
 print 'guess: '
+game.guess gets.chomp
+game.guess gets.chomp
+game.guess gets.chomp
+game.guess gets.chomp
 game.guess gets.chomp
