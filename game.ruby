@@ -6,7 +6,7 @@ class BreakAttempt
   def initialize(peg_spaces)
     @break_attempt = Array.new(peg_spaces)
     @feedback = Array.new(peg_spaces)
-    @feedback_count = 0;
+    @feedback_count = 0
   end
 
   def add_feedback_peg(feedback_type)
@@ -57,29 +57,27 @@ class Board
     puts @guesses[@turns_passed].break_attempt.to_s
     puts @answer.to_s
     if guess.eql? @answer
-      puts 'YOU WIN!'
+      @turns_passed += 1
+      return true
     else
-      check_guess(guess)
-      puts 'TRY AGAIN'
+      evaluate_guess(guess)
+      @turns_passed += 1
+      puts 'TRY AGAIN' if @turns_passed != TURNS
     end
-
-    @turns_passed += 1
+    false
   end
 
-  def check_guess(guess)
+  def evaluate_guess(guess)
     feedback_position(guess)
-
-    puts "Feedback:\n#{@guesses[@turns_passed].feedback}"
-    puts "The board after 'pulling out' the correct pegs:\n#{guess.to_s}"
+    # puts "Feedback:\n#{@guesses[@turns_passed].feedback}"
+    # puts "The board after 'pulling out' the correct pegs:\n#{guess.to_s}"
 
     feedback_colors(guess)
-
     puts "Final feedback:\n#{@guesses[@turns_passed].feedback}"
   end
 
   # Adds CORRECT_POSITION pegs and returns guess without the correctly answered pegs
   def feedback_position(guess)
-    # feedback = @guesses[@turns_passed].feedback
     guess.each.with_index do |peg, slot|
       if peg.eql? @answer[slot]
         @guesses[@turns_passed].add_feedback_peg CORRECT_POSITION
@@ -91,8 +89,7 @@ class Board
 
   def feedback_colors(guess)
     remaining_answer = @answer
-    puts "remaining_answer: #{remaining_answer}"
-    puts "remaining_guess: #{guess}"
+    # puts "remaining_guess: #{guess}"
 
     remaining_answer.each do |answer_peg|
       if index = guess.index(answer_peg)
@@ -102,13 +99,22 @@ class Board
     end
   end
 
+  def play
+    braker_won = false
+    until braker_won || @turns_passed >= TURNS
+      print 'guess: '
+      braker_won = guess gets.chomp
+    end
+    if braker_won
+      puts 'Code braker won!'
+    else
+      puts 'Code maker won!'
+    end
+
+    braker_won
+  end
 end
 
 puts '* * * M a s t e r m i n d * * *'
 game = Board.new(true)
-print 'guess: '
-game.guess gets.chomp
-game.guess gets.chomp
-game.guess gets.chomp
-game.guess gets.chomp
-game.guess gets.chomp
+game.play
