@@ -12,26 +12,35 @@ class MastermindObject
   def random_color
     COLORS.sample
   end
+
+  def different_color(current_color)
+    new_color = current_color
+    new_color = random_color while new_color.eql? current_color
+    new_color
+  end
 end
 
 # Guesses and learns how to guess the code correctly
 class AI < MastermindObject
-  # TODO: use guessed spaces to check coours
   # TODO: if the computer has guessed the right color but the wrong position
   #       , its next guess will need to include that color somewhere
   def initialize
     @correct_position_colors = Array.new(PEG_SPACES) { EMPTY }
     @break_attempt = []
-    @previous_result = nil
+    @previous_results = []
+    @all_colors_guessed = false
   end
 
   def guess
-    if @previous_result.nil?
-      @break_attempt.push random_guess
+    new_guess = []
+    if @previous_results.length < 2
+      new_guess = random_guess
     else
-      @break_attempt.push smart_guess
+      new_guess = smart_guess
     end
-    @previous_result = @break_attempt.last
+    puts "Computer guesses:\n#{new_guess.to_s}"
+    @break_attempt.push new_guess
+    new_guess
   end
 
   def random_guess
@@ -40,16 +49,48 @@ class AI < MastermindObject
     peg_guesses
   end
 
-  def smart_guess
-    peg_guesses = []
-    @correct_position_colors.each_with_index do |slot, index|
-      if slot == EMPTY
-        peg_guesses.push(random_color)
-      else
-        peg_guesses.push(@correct_position_colors[index])
-      end
+  def evaluate_last2_by_nonnil # FIXME: in progress
+    puts "--- previous result evaluation"
+    first_guess_miss = @previous_results[-2].count(nil)
+    second_guess_miss = @previous_results[-1].count(nil)
+    puts "first_guess_miss: #{first_guess_miss} with guess: #{@break_attempt[-2].to_s}"
+    puts "secon_guess_miss: #{second_guess_miss} with guess: #{@break_attempt[-1].to_s}"
+
+    good_result = Array.new(@previous_results[-1])
+    good_guess = Array.new(@break_attempt[-1])
+    earlier_better = second_guess_miss <=> first_guess_miss
+    puts "earlier guess more accurate?: #{earlier_better}"
+    if earlier_better == 1
+      good_result = @previous_results[-2]
+      good_guess = @break_attempt[-2]
+
+      # TODO: maybe add special case when both results are equally good
     end
-    peg_guesses
+    misses = good_result.count(nil)
+    puts "Better guess: #{good_guess.to_s} with #{misses} misses"
+    if misses > 0
+      # TODO: add check to not repeat guesses
+      misses.times do
+        random_index = rand(0..good_guess.length - 1)
+        good_guess[random_index] = different_color(good_guess[random_index])
+      end
+      puts "Remixed guess: #{good_guess.to_s}"
+
+    else
+      # TODO: randomize answer - use correct position flag
+      puts "*** Not handled yet: randomize answer - use correct position flag"
+    end
+
+    puts "evaluation end ---"
+    good_guess
+  end
+
+  def smart_guess
+    evaluate_last2_by_nonnil
+  end
+
+  def collect_results(feedback)
+    @previous_results.push feedback
   end
 end
 
@@ -102,8 +143,20 @@ class Board < MastermindObject
   end
 
   def computer_guess
-    guess = guess(@ai.guess)
-    puts "AI guesses: #{guess}"
+    guess = Array.new(@ai.guess)
+    puts @answer.to_s
+    if guess.eql? @answer
+      @turns_passed += 1
+      return true
+    else
+      evaluate_guess(guess)
+      @ai.collect_results(@guesses[@turns_passed].feedback)
+      @turns_passed += 1
+      puts 'TRY AGAIN' if @turns_passed != TURNS
+    end
+
+    # TODO: remove pause
+    gets
 
     false
   end
@@ -126,31 +179,34 @@ class Board < MastermindObject
   end
 
   def evaluate_guess(guess)
-    feedback_position(guess)
-    puts "Position feedback:\n#{@guesses[@turns_passed].feedback}"
+    correctly_guessed = feedback_position(guess)
+    # puts "Position feedback:\n#{@guesses[@turns_passed].feedback}"
     # puts "The guess after 'pulling out' the correct pegs:\n#{guess.to_s}"
 
-    feedback_colors(guess)
-    puts "Final feedback:\n#{@guesses[@turns_passed].feedback}"
+    feedback_colors(guess, correctly_guessed)
+    puts "Feedback:\n#{@guesses[@turns_passed].feedback}"
+    @guesses[@turns_passed].feedback
   end
 
-  # Adds CORRECT_POSITION pegs and returns guess without the correctly answered pegs
+  # Adds CORRECT_POSITION pegs and returns positions that were guessed correctly
   def feedback_position(guess)
+    correct_positions = Array.new(PEG_SPACES)
     guess.each.with_index do |peg, slot|
       if peg.eql? @answer[slot]
         @guesses[@turns_passed].add_feedback_peg CORRECT_POSITION
         guess[slot] = EMPTY
+        correct_positions[slot] = CORRECT_POSITION
       end
     end
-    guess
+    correct_positions
   end
 
-  def remove_guessed_answer_pegs(guess)
+  def remove_correctly_guessed_pegs(correctly_guessed)
     remaining_answer = Array.new(@answer)
 
     answer_offset = 0
-    for index in 0..guess.length - 1
-      if guess[index] == EMPTY
+    for index in 0..@answer.length - 1
+      if correctly_guessed[index] == CORRECT_POSITION
         remaining_answer.delete_at(index - answer_offset)
         answer_offset += 1
       end
@@ -159,10 +215,10 @@ class Board < MastermindObject
     remaining_answer
   end
 
-  def feedback_colors(guess)
-    puts "remaining_guess: #{guess}"
-    remaining_answer = remove_guessed_answer_pegs(guess)
-    puts "remaining_answer: #{remaining_answer}"
+  def feedback_colors(guess, correctly_guessed)
+    # puts "remaining_guess: #{guess}"
+    remaining_answer = remove_correctly_guessed_pegs(correctly_guessed)
+    # puts "remaining_answer: #{remaining_answer}"
 
     remaining_answer.each do |answer_peg|
       if index = guess.index(answer_peg)
@@ -189,4 +245,4 @@ end
 
 puts '* * * M a s t e r m i n d * * *'
 game = Board.new(true)
-game.play(true)
+game.play(false)
