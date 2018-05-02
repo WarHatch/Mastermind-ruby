@@ -19,6 +19,8 @@ end
 
 # Mastermind game board components and game sequence
 class Board < MastermindObject
+  attr_reader :turns_passed, :guesses
+
   def initialize(computer_generated)
     @guesses = Array.new(TURNS) { BreakAttempt.new }
     @answer = Array.new(PEG_SPACES)
@@ -26,7 +28,7 @@ class Board < MastermindObject
     @ai = AI.new
 
     computer_generated ? generate_code : input_code
-    puts @answer.to_s
+    puts "answer: #{@answer.to_s}"
     puts 'START GUESSING'
   end
 
@@ -36,15 +38,20 @@ class Board < MastermindObject
     end
   end
 
-  def input_code
-    puts "Codemaker, write #{PEG_SPACES} numbers from 0 to #{COLORS.length} separated by space.
-0 represents an empty spot
-1-6 represent colors"
-    input = gets.split(' ')
+  def input_code(input = nil)
+    if input.nil?
+      puts "Codemaker, write #{PEG_SPACES} numbers from 0 to #{COLORS.length} separated by space.
+  0 represents an empty spot
+  1-6 represent colors"
+      input = gets
+    end
+    input = input.split(' ')
+
     unless input.length == PEG_SPACES
       puts 'Incorrect input, try again'
       input = input_code
     end
+
     @answer = input
   end
 
@@ -147,5 +154,5 @@ class Board < MastermindObject
 end
 
 # puts '* * * M a s t e r m i n d * * *'
-# game = Board.new(true)
+# game = Board.new(false)
 # game.play(true)
